@@ -66,10 +66,12 @@ class ConsumerFetcherManager(private val consumerIdString: String,
         val topicsMetadata = ClientUtils.fetchTopicMetadata(noLeaderPartitionSet.map(m => m.topic).toSet,
                                                             brokers,
                                                             config.clientId,
+                                                            config.securityConfigFile,
                                                             config.socketTimeoutMs,
                                                             correlationId.getAndIncrement).topicsMetadata
         if(logger.isDebugEnabled) topicsMetadata.foreach(topicMetadata => debug(topicMetadata.toString()))
         topicsMetadata.foreach { tmd =>
+          info(tmd.toString())
           val topic = tmd.topic
           tmd.partitionsMetadata.foreach { pmd =>
             val topicAndPartition = TopicAndPartition(topic, pmd.partitionId)

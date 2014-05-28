@@ -22,7 +22,6 @@ import kafka.utils.Json
 import kafka.api.ApiUtils._
 import java.nio.ByteBuffer
 import kafka.common.{KafkaException, BrokerNotAvailableException}
-import org.apache.kafka.common.utils.Utils._
 
 /**
  * A Kafka broker
@@ -38,7 +37,8 @@ object Broker {
           val brokerInfo = m.asInstanceOf[Map[String, Any]]
           val host = brokerInfo.get("host").get.asInstanceOf[String]
           val port = brokerInfo.get("port").get.asInstanceOf[Int]
-          new Broker(id, host, port)
+          val secure = if (brokerInfo.get("secure").get.asInstanceOf[Int] == 0) false else true
+          new Broker(id, host, port, secure)
         case None =>
           throw new BrokerNotAvailableException("Broker id %d does not exist".format(id))
       }
@@ -51,32 +51,34 @@ object Broker {
     val id = buffer.getInt
     val host = readShortString(buffer)
     val port = buffer.getInt
-    new Broker(id, host, port)
+    val secure = buffer.getShort == 1
+    new Broker(id, host, port, secure)
   }
 }
 
-case class Broker(id: Int, host: String, port: Int) {
+case class Broker(val id: Int, val host: String, val port: Int, val secure: Boolean = false) {
   
-  override def toString: String = "id:" + id + ",host:" + host + ",port:" + port
+  override def toString(): String = new String("id:" + id + ",host:" + host + ",port:" + port + ",secure:" + secure)
 
-  def connectionString: String = formatAddress(host, port)
+  def getConnectionString(): String = host + ":" + port + ":" + (if (secure) 1 else 0)
 
   def writeTo(buffer: ByteBuffer) {
     buffer.putInt(id)
     writeShortString(buffer, host)
     buffer.putInt(port)
+    buffer.putShort(if (secure) 1 else 0)
   }
 
-  def sizeInBytes: Int = shortStringLength(host) /* host name */ + 4 /* port */ + 4 /* broker id*/
+  def sizeInBytes: Int = shortStringLength(host) /* host name */ + 4 /* port */ + 4 /* broker id*/ + 2 /* secure */
 
   override def equals(obj: Any): Boolean = {
     obj match {
       case null => false
-      case n: Broker => id == n.id && host == n.host && port == n.port
+      case n: Broker => id == n.id && host == n.host && port == n.port && secure == n.secure
       case _ => false
     }
   }
   
-  override def hashCode(): Int = hashcode(id, host, port)
+  override def hashCode(): Int = hashcode(id, host, port, if (secure) 1 else 0)
   
 }

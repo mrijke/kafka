@@ -43,7 +43,7 @@ abstract class AbstractFetcherThread(name: String, clientId: String, sourceBroke
   private val partitionMap = new mutable.HashMap[TopicAndPartition, Long] // a (topic, partition) -> offset map
   private val partitionMapLock = new ReentrantLock
   private val partitionMapCond = partitionMapLock.newCondition()
-  val simpleConsumer = new SimpleConsumer(sourceBroker.host, sourceBroker.port, socketTimeout, socketBufferSize, clientId)
+  val simpleConsumer = new SimpleConsumer(sourceBroker.host, sourceBroker.port, socketTimeout, socketBufferSize, clientId, sourceBroker.secure)
   private val metricId = new ClientIdAndBroker(clientId, sourceBroker.host, sourceBroker.port)
   val fetcherStats = new FetcherStats(metricId)
   val fetcherLagStats = new FetcherLagStats(metricId)
@@ -51,7 +51,8 @@ abstract class AbstractFetcherThread(name: String, clientId: String, sourceBroke
           clientId(clientId).
           replicaId(fetcherBrokerId).
           maxWait(maxWait).
-          minBytes(minBytes)
+          minBytes(minBytes).
+          secure(sourceBroker.secure)
 
   /* callbacks to be defined in subclass */
 
