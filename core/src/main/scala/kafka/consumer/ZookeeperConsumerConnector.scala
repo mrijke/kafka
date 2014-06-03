@@ -612,7 +612,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
                     * For example, a ZK node can disappear between the time we get all children and the time we try to get
                     * the value of a child. Just let this go since another rebalance will be triggered.
                     **/
-                  error("exception during rebalance ", e)
+                  info("exception during rebalance ", e)
               }
               info("end rebalancing consumer " + consumerIdString + " try #" + i)
               if (done) {

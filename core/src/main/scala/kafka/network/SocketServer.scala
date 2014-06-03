@@ -35,18 +35,19 @@ import javax.net.ssl.SSLException
 
 /**
  * An NIO socket server. The threading model is
- * 1 Acceptor thread that handles new connections
- * N Processor threads that each have their own selector and read requests from sockets
- * M Handler threads that handle requests and produce responses back to the processor threads for writing.
+ *   1 Acceptor thread that handles new connections
+ *   N Processor threads that each have their own selector and read requests from sockets
+ *   M Handler threads that handle requests and produce responses back to the processor threads for writing.
  */
 class SocketServer(val brokerId: Int,
                    val host: String,
                    val port: Int,
+                   val secure: Boolean,
+                   val securityConfig: AuthConfig,
                    val numProcessorThreads: Int,
                    val maxQueuedRequests: Int,
                    val sendBufferSize: Int,
                    val recvBufferSize: Int,
-                   val maxRequestSize: Int = Int.MaxValue) extends Logging with KafkaMetricsGroup {
                    val maxRequestSize: Int = Int.MaxValue,
                    val maxConnectionsPerIp: Int = Int.MaxValue,
                    val connectionsMaxIdleMs: Long,
@@ -332,9 +333,17 @@ private[kafka] class Processor(val id: Int,
         configureNewConnections()
         // register any new responses for writing
         processNewResponses()
-        val startSelectTime = SystemTime.milliseconds
+        val startSelectTime = SystemTime.nanoseconds
         val ready = selector.select(300)
-        trace("Processor id " + id + " selection time = " + (SystemTime.milliseconds - startSelectTime) + " ms")
+        val idleTime = SystemTime.nanoseconds - startSelectTime
+        idleMeter.mark(idleTime)
+        // We use a single meter for aggregate idle percentage for the thread pool.
+        // Since meter is calculated as total_recorded_value / time_window and
+        // time_window is independent of the number of threads, each recorded idle
+        // time should be discounted by # threads.
+        aggregateIdleMeter.mark(idleTime / totalProcessorThreads)
+
+        trace("Processor id " + id + " selection time = " + idleTime + " ns")
         if (ready > 0) {
           val keys = selector.selectedKeys()
           val iter = keys.iterator()
@@ -380,33 +389,33 @@ private[kafka] class Processor(val id: Int,
     shutdownComplete()
   }
 
-  /**
-   * Close the given key and associated socket
-   */
-  override def close(key: SelectionKey): Unit = {
-    lruConnections.remove(key)
-    super.close(key)
-  }
-
   private def processNewResponses() {
     var curr = requestChannel.receiveResponse(id)
     while (curr != null) {
       val key = curr.request.requestKey.asInstanceOf[SelectionKey]
+      val channelTuple = key.attachment.asInstanceOf[ChannelTuple]
       try {
-        val channelTuple = key.attachment.asInstanceOf[ChannelTuple]
-        if (curr.responseSend == null) {
-          // a null response send object indicates that there is no response to send to the client.
-          // In this case, we just want to turn the interest ops to READ to be able to read more pipelined requests
-          // that are sitting in the server's socket buffer
-          trace("Socket server received empty response to send, registering for read: " + curr)
-          key.interestOps(SelectionKey.OP_READ)
-          key.attach(ChannelTuple(null, channelTuple.sslChannel))
-          curr.request.updateRequestMetrics
-          readBufferedSSLDataIfNeeded(key, channelTuple)
-        } else {
-          trace("Socket server received response to send, registering for write: " + curr)
-          key.interestOps(SelectionKey.OP_WRITE)
-          key.attach(ChannelTuple(curr, channelTuple.sslChannel))
+        curr.responseAction match {
+          case RequestChannel.NoOpAction => {
+            // There is no response to send to the client, we need to read more pipelined requests
+            // that are sitting in the server's socket buffer
+            curr.request.updateRequestMetrics()
+            trace("Socket server received empty response to send, registering for read: " + curr)
+            key.interestOps(SelectionKey.OP_READ)
+            key.attach(ChannelTuple(null, channelTuple.sslChannel))
+            readBufferedSSLDataIfNeeded(key, channelTuple)
+          }
+          case RequestChannel.SendAction => {
+            trace("Socket server received response to send, registering for write: " + curr)
+            key.interestOps(SelectionKey.OP_WRITE)
+            key.attach(ChannelTuple(curr, channelTuple.sslChannel))
+          }
+          case RequestChannel.CloseConnectionAction => {
+            curr.request.updateRequestMetrics()
+            trace("Closing socket connection actively according to the response code.")
+            close(key)
+          }
+          case responseCode => throw new KafkaException("No mapping found for response code " + responseCode)
         }
       } catch {
         case e: CancelledKeyException => {
@@ -416,6 +425,30 @@ private[kafka] class Processor(val id: Int,
       } finally {
         curr = requestChannel.receiveResponse(id)
       }
+    }
+  }
+
+  private def close(key: SelectionKey) {
+    try {
+      lruConnections.remove(key)
+      val channel = channelFor(key)
+      debug("Closing connection from " + channel.socket.getRemoteSocketAddress)
+      swallowError(channel.close())
+      swallowError(channel.socket().close())
+    } finally {
+      key.attach(null)
+      swallowError(key.cancel())
+    }
+  }
+
+  /*
+   * Close all open connections
+   */
+  private def closeAll() {
+    val iter = this.selector.keys().iterator()
+    while (iter.hasNext) {
+      val key = iter.next()
+      close(key)
     }
   }
 
@@ -459,7 +492,7 @@ private[kafka] class Processor(val id: Int,
     }
     val read = receive.readFrom(socketChannel)
     val address = socketChannel.socket.getRemoteSocketAddress
-    trace(read + " bytes read from " + address) // change to trace
+    trace(read + " bytes read from " + address)
     if (read < 0) {
       close(key)
     } else if (receive.complete) {
@@ -471,10 +504,8 @@ private[kafka] class Processor(val id: Int,
     } else {
       // more reading to be done
       trace("Did not finish reading, registering for read again on connection " + socketChannel.socket.getRemoteSocketAddress)
-      val ops = key.interestOps
-      key.interestOps(ops)
-      // If we were reading and still is reading we should wakeup immediately and read some more
-      if (ops == SelectionKey.OP_READ) wakeup()
+      key.interestOps(SelectionKey.OP_READ)
+      wakeup()
     }
   }
 
@@ -499,10 +530,8 @@ private[kafka] class Processor(val id: Int,
       readBufferedSSLDataIfNeeded(key, channelTuple)
     } else {
       trace("Did not finish writing, registering for write again on connection " + socketChannel.socket.getRemoteSocketAddress)
-      val ops = key.interestOps
-      key.interestOps(ops)
-      // If we were writing and still is writing we should wakeup immediately and write some more
-      if (ops == SelectionKey.OP_WRITE) wakeup()
+      key.interestOps(SelectionKey.OP_WRITE)
+      wakeup()
     }
   }
 

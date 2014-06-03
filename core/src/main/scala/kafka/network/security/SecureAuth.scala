@@ -19,35 +19,34 @@ package kafka.network.security
 
 import javax.net.ssl.SSLContext
 import kafka.utils.Logging
+import java.util.concurrent.atomic.AtomicBoolean
 
 object SecureAuth extends Logging {
-  private var initialized = false
+  private val initialized = new AtomicBoolean(false)
   private var authContext: SSLContext = null
 
-  def isInitialized = initialized
+  def isInitialized = initialized.get
 
   def sslContext = {
-    if (!initialized) {
+    if (!initialized.get) {
       throw new IllegalStateException("Secure authentication is not initialized.")
     }
     authContext
   }
 
   def initialize(config: AuthConfig) {
-    synchronized {
-                   if (initialized) {
-                     warn("Attempt to reinitialize auth context")
-                     return
-                   }
-                   info("Initializing secure authentication")
+    if (initialized.get) {
+      warn("Attempt to reinitialize auth context")
+      return
+    }
 
-                   val initializer = KeyStores.getKeyStore(config.keystoreType)
-                   authContext = initializer.initialize(config)
+    info("Initializing secure authentication")
 
-                   initialized = true
-                   info("Secure authentication initialization has been successfully completed")
-                 }
+    val initializer = KeyStores.getKeyStore(config.keystoreType)
+    authContext = initializer.initialize(config)
+
+    initialized.set(true)
+
+    info("Secure authentication initialization has been successfully completed")
   }
-
-
 }
