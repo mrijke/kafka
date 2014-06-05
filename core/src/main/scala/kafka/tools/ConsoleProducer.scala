@@ -60,8 +60,8 @@ object ConsoleProducer {
             props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, config.maxMemoryBytes.toString)
             props.put(ProducerConfig.BATCH_SIZE_CONFIG, config.maxPartitionMemoryBytes.toString)
             props.put(ProducerConfig.CLIENT_ID_CONFIG, "console-producer")
-            props.put("secure", config.secure.toString)
-            if (config.securityConfig != null) props.put("security.config.file", config.securityConfig)
+            props.put(ProducerConfig.SECURE, config.secure.toString)
+            if (config.securityConfig != null) props.put(ProducerConfig.SECURITY_CONFIG_FILE, config.securityConfig)
             props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer")
             props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer")
 

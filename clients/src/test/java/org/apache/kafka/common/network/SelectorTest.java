@@ -51,7 +51,7 @@ public class SelectorTest {
     public void setup() throws Exception {
         this.server = new EchoServer();
         this.server.start();
-        this.selector = new Selector(new Metrics(), new MockTime() , "MetricGroup", new LinkedHashMap<String, String>());
+        this.selector = new Selector(new Metrics(), new MockTime() , "MetricGroup", new LinkedHashMap<String, String>(), false);
     }
 
     @After

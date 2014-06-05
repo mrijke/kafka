@@ -172,6 +172,14 @@ public class ProducerConfig extends AbstractConfig {
     public static final String MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION = "max.in.flight.requests.per.connection";
     private static final String MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION_DOC = "The maximum number of unacknowledged requests the client will send on a single connection before blocking.";
 
+    /** <code>secure</code> */
+    public static final String SECURE = "secure";
+    private static final String SECURE_DOC = "Determines whether use SSL of not.";
+
+    /** <code>security.config.file</code> */
+    public static final String SECURITY_CONFIG_FILE = "security.config.file";
+    private static final String SECURITY_CONFIG_FILE_DOC = "Determines whether use SSL of not.";
+
     /** <code>key.serializer</code> */
     public static final String KEY_SERIALIZER_CLASS_CONFIG = "key.serializer";
     private static final String KEY_SERIALIZER_CLASS_DOC = "Serializer class for key that implements the <code>Serializer</code> interface.";
@@ -227,6 +235,16 @@ public class ProducerConfig extends AbstractConfig {
                                         atLeast(1),
                                         Importance.LOW,
                                         MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION_DOC)
+                                .define(SECURE,
+                                        Type.BOOLEAN,
+                                        false,
+                                        Importance.LOW,
+                                        SECURE_DOC)
+                                .define(SECURITY_CONFIG_FILE,
+                                        Type.STRING,
+                                        "config/client.security.properties",
+                                        Importance.LOW,
+                                        SECURITY_CONFIG_FILE_DOC)
                                 .define(KEY_SERIALIZER_CLASS_CONFIG, Type.CLASS, Importance.HIGH, KEY_SERIALIZER_CLASS_DOC)
                                 .define(VALUE_SERIALIZER_CLASS_CONFIG, Type.CLASS, Importance.HIGH, VALUE_SERIALIZER_CLASS_DOC);
     }
