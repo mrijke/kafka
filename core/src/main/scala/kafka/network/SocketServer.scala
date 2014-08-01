@@ -277,7 +277,7 @@ private[kafka] class Acceptor(val host: String,
    */
   def accept(key: SelectionKey, processor: Processor) {
     val serverSocketChannel = key.channel().asInstanceOf[ServerSocketChannel]
-    serverSocketChannel.socket().setReceiveBufferSize(recvBufferSize)
+    serverSocketChannel.socket().setReceiveBufferSize(receiveBufferSize)
 
     val sch = serverSocketChannel.accept()
     val socketChannel = if (secure) SSLSocketChannel.makeSecureServerConnection(sch, securityConfig.wantClientAuth, securityConfig.needClientAuth) else sch
@@ -296,7 +296,7 @@ private[kafka] class Acceptor(val host: String,
     } catch {
       case e: TooManyConnectionsException =>
         info("Rejected connection from %s, address already has the configured maximum of %d connections.".format(e.ip, e.count))
-        close(socketChannel)
+        socketChannel.close()
     }
   }
 
