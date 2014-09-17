@@ -428,7 +428,7 @@ private[kafka] class Processor(val id: Int,
     }
   }
 
-  private def close(key: SelectionKey) {
+  override def close(key: SelectionKey) {
     try {
       lruConnections.remove(key)
       val channel = channelFor(key)
@@ -444,7 +444,7 @@ private[kafka] class Processor(val id: Int,
   /*
    * Close all open connections
    */
-  private def closeAll() {
+  override def closeAll() {
     val iter = this.selector.keys().iterator()
     while (iter.hasNext) {
       val key = iter.next()
