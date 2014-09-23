@@ -42,7 +42,7 @@ class SocketServerTest extends JUnitSuite {
                                               numProcessorThreads = 1,
                                               maxQueuedRequests = 50,
                                               sendBufferSize = 300000,
-                                              receiveBufferSize = 300000,
+                                              recvBufferSize = 300000,
                                               maxRequestSize = 50,
                                               maxConnectionsPerIp = 5,
                                               connectionsMaxIdleMs = 60*1000,

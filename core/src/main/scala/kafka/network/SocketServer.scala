@@ -277,7 +277,7 @@ private[kafka] class Acceptor(val host: String,
    */
   def accept(key: SelectionKey, processor: Processor) {
     val serverSocketChannel = key.channel().asInstanceOf[ServerSocketChannel]
-    serverSocketChannel.socket().setReceiveBufferSize(receiveBufferSize)
+    serverSocketChannel.socket().setReceiveBufferSize(recvBufferSize)
 
     val sch = serverSocketChannel.accept()
     val socketChannel = if (secure) SSLSocketChannel.makeSecureServerConnection(sch, securityConfig.wantClientAuth, securityConfig.needClientAuth) else sch
