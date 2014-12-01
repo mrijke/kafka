@@ -218,7 +218,7 @@ object ConsoleProducer {
       .ofType(classOf[String])
     val useNewProducerOpt = parser.accepts("new-producer", "Use the new producer implementation.")
     val secureOpt = parser.accepts("secure", "Whether SSL enabled").withOptionalArg()
-    val securityConfigFileOpt = parser.accepts("client.security.file", "Security config file to use for SSL.")
+    val securityConfigFileOpt = parser.accepts("security.config.file", "Security config file to use for SSL.")
       .withRequiredArg
       .describedAs("property file")
       .ofType(classOf[java.lang.String])

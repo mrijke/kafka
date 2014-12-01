@@ -161,8 +161,7 @@ object ZkUtils extends Logging {
   def registerBrokerInZk(zkClient: ZkClient, id: Int, host: String, port: Int, timeout: Int, jmxPort: Int, secure: Boolean) {
     val brokerIdPath = ZkUtils.BrokerIdsPath + "/" + id
     val timestamp = SystemTime.milliseconds.toString
-    val secureValue = if (secure) 1 else 0
-    val brokerInfo = Json.encode(Map("version" -> 1, "host" -> host, "port" -> port, "jmx_port" -> jmxPort, "timestamp" -> timestamp, "secure" -> secureValue))
+    val brokerInfo = Json.encode(Map("version" -> 1, "host" -> host, "port" -> port, "jmx_port" -> jmxPort, "timestamp" -> timestamp, "secure" -> secure))
     val expectedBroker = new Broker(id, host, port, secure)
 
     try {

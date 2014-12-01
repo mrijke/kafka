@@ -37,7 +37,7 @@ object Broker {
           val brokerInfo = m.asInstanceOf[Map[String, Any]]
           val host = brokerInfo.get("host").get.asInstanceOf[String]
           val port = brokerInfo.get("port").get.asInstanceOf[Int]
-          val secure = if (brokerInfo.get("secure").get.asInstanceOf[Int] == 0) false else true
+          val secure = brokerInfo.get("secure").get.asInstanceOf[Boolean]
           new Broker(id, host, port, secure)
         case None =>
           throw new BrokerNotAvailableException("Broker id %d does not exist".format(id))
