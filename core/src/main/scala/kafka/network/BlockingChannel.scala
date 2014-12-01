@@ -74,6 +74,7 @@ class BlockingChannel( val host: String,
                        channel.socket.getSendBufferSize,
                        writeBufferSize,
                        connectTimeoutMs))
+    }
   }
 
   def disconnect() = lock synchronized {
