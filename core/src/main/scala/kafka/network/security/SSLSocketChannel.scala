@@ -329,7 +329,7 @@ class SSLSocketChannel(val underlying: SocketChannel, val sslEngine: SSLEngine)
       while (true) {
         handshakeStatus match {
           case HandshakeStatus.NOT_HANDSHAKING =>
-            info("begin ssl handshake for %s/%s".format(underlying.socket.getRemoteSocketAddress,
+            debug("begin ssl handshake for %s/%s".format(underlying.socket.getRemoteSocketAddress,
                                                         underlying.socket.getLocalSocketAddress))
             sslEngine.beginHandshake()
             handshakeStatus = sslEngine.getHandshakeStatus
@@ -355,7 +355,7 @@ class SSLSocketChannel(val underlying: SocketChannel, val sslEngine: SSLEngine)
           case HandshakeStatus.NEED_TASK =>
             handshakeStatus = runTasks()
           case HandshakeStatus.FINISHED =>
-            info("finished ssl handshake for %s/%s".format(underlying.socket.getRemoteSocketAddress,
+            debug("finished ssl handshake for %s/%s".format(underlying.socket.getRemoteSocketAddress,
                                                            underlying.socket.getLocalSocketAddress))
             return 0
           case null =>
