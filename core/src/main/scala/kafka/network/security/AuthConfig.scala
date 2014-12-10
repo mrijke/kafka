@@ -23,6 +23,7 @@ import kafka.utils.Logging
 
 object AuthConfig {
   val DEFAULT_SECURITY_CONFIG = "config/client.security.properties"
+  val DEFAULT_KEYSTORE_TYPE = "jks"
 }
 
 class AuthConfig(var securityConfigFile: String) extends Logging {
@@ -35,7 +36,7 @@ class AuthConfig(var securityConfigFile: String) extends Logging {
     new VerifiableProperties(Utils.loadProps(securityConfigFile))
   }
 
-  val keystoreType = props.getString("keystore.type")
+  val keystoreType = props.getString("keystore.type", AuthConfig.DEFAULT_KEYSTORE_TYPE)
 
   /** Request client auth */
   val wantClientAuth = props.getBoolean("want.client.auth", false)
