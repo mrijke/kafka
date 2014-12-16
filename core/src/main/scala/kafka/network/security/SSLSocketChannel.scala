@@ -58,6 +58,7 @@ object SSLSocketChannel {
   }
 
   val simulateSlowNetwork = false
+  val DEFAULT_CONNECT_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
 
   val runningTasks = -2
   private[this] lazy val counter = new AtomicInteger(0)
@@ -169,11 +170,16 @@ class SSLSocketChannel(val underlying: SocketChannel, val sslEngine: SSLEngine)
 
   def isConnectionPending: Boolean = underlying.isConnectionPending
 
-  def connect(remote: SocketAddress): Boolean = {
+  def connect(remote: SocketAddress, timeoutInMs: Long): Boolean = {
     debug("SSLSocketChannel Connecting to Remote : " + remote)
+    val startTime = System.currentTimeMillis();
     val ret = underlying.connect(remote)
     if (blocking) {
       while (!finishConnect()) {
+        //Check for timeout
+        if ( (System.currentTimeMillis() - startTime) > timeoutInMs) {
+          throw new SocketTimeoutException("Couldn't connect to " + remote + " within " + timeoutInMs + " milliseconds.")
+        }
         try {
           Thread.sleep(10)
         } catch {
@@ -184,6 +190,10 @@ class SSLSocketChannel(val underlying: SocketChannel, val sslEngine: SSLEngine)
       handshakeInBlockMode(SelectionKey.OP_WRITE)
       true
     } else ret
+  }
+
+  def connect(remote: SocketAddress) : Boolean = {
+    connect(remote, SSLSocketChannel.DEFAULT_CONNECT_TIMEOUT_MS);
   }
 
   def finishConnect(): Boolean = underlying.finishConnect()

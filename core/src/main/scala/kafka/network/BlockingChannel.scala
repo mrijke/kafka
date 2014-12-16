@@ -53,15 +53,18 @@ class BlockingChannel( val host: String,
         channel.socket.setReceiveBufferSize(readBufferSize)
       if(writeBufferSize > 0)
         channel.socket.setSendBufferSize(writeBufferSize)
-      if (secure) channel.asInstanceOf[SSLSocketChannel].simulateBlocking(true) else channel.configureBlocking(true)
       channel.socket.setSoTimeout(readTimeoutMs)
       channel.socket.setKeepAlive(true)
       channel.socket.setTcpNoDelay(true)
-      /*TODO: I had to revert the change made by this commit https://github.com/apache/kafka/commit/91f8ce7eff5c62c619454ad9d67415878805f600
-      to fix the bug https://issues.apache.org/jira/browse/KAFKA-1733 to get it working in secure mode. Need to investigate further
-      to find better way to fix the bug filed in KAFKA-1733
-       */
-      channel.connect(new InetSocketAddress(host, port))
+
+      if (secure) {
+        channel.asInstanceOf[SSLSocketChannel].simulateBlocking(true)
+        channel.asInstanceOf[SSLSocketChannel].connect(new InetSocketAddress(host, port), connectTimeoutMs)
+      }
+      else {
+        channel.configureBlocking(true)
+        channel.socket.connect(new InetSocketAddress(host, port), connectTimeoutMs)
+      }
 
       writeChannel = channel
       readChannel = Channels.newChannel(Channels.newInputStream(channel))
