@@ -16,7 +16,9 @@
  */
  package kafka.client
 
-import scala.collection._
+ import kafka.network.security.{AuthConfig, SecureAuth}
+
+ import scala.collection._
 import kafka.cluster._
 import kafka.api._
 import kafka.producer._
@@ -119,13 +121,16 @@ object ClientUtils extends Logging{
    /**
     * Creates a blocking channel to a random broker
     */
-   def channelToAnyBroker(zkClient: ZkClient, socketTimeoutMs: Int = 3000) : BlockingChannel = {
+   def channelToAnyBroker(zkClient: ZkClient, socketTimeoutMs: Int = 3000, securityConfigFile: String = null) : BlockingChannel = {
      var channel: BlockingChannel = null
      var connected = false
      while (!connected) {
        val allBrokers = getAllBrokersInCluster(zkClient)
        Random.shuffle(allBrokers).find { broker =>
          trace("Connecting to broker %s:%d.".format(broker.host, broker.port))
+         if (broker.secure && !SecureAuth.isInitialized){
+           SecureAuth.initialize(new AuthConfig(securityConfigFile))
+         }
          try {
            channel = new BlockingChannel(broker.host, broker.port, broker.secure, BlockingChannel.UseDefaultBufferSize, BlockingChannel.UseDefaultBufferSize, socketTimeoutMs)
            channel.connect()
@@ -135,7 +140,7 @@ object ClientUtils extends Logging{
            case e: Exception =>
              if (channel != null) channel.disconnect()
              channel = null
-             info("Error while creating channel to %s:%d.".format(broker.host, broker.port))
+             info("Error while creating channel to %s:%d., secure=%s".format(broker.host, broker.port, broker.secure), e)
              false
          }
        }
@@ -148,8 +153,8 @@ object ClientUtils extends Logging{
    /**
     * Creates a blocking channel to the offset manager of the given group
     */
-   def channelToOffsetManager(group: String, zkClient: ZkClient, socketTimeoutMs: Int = 3000, retryBackOffMs: Int = 1000) = {
-     var queryChannel = channelToAnyBroker(zkClient)
+   def channelToOffsetManager(group: String, zkClient: ZkClient, socketTimeoutMs: Int = 3000, retryBackOffMs: Int = 1000, securityConfigFile: String = null) = {
+     var queryChannel = channelToAnyBroker(zkClient, socketTimeoutMs, securityConfigFile)
 
      var offsetManagerChannelOpt: Option[BlockingChannel] = None
 
@@ -160,7 +165,7 @@ object ClientUtils extends Logging{
        while (!coordinatorOpt.isDefined) {
          try {
            if (!queryChannel.isConnected)
-             queryChannel = channelToAnyBroker(zkClient)
+             queryChannel = channelToAnyBroker(zkClient, socketTimeoutMs, securityConfigFile)
            debug("Querying %s:%d to locate offset manager for %s.".format(queryChannel.host, queryChannel.port, group))
            queryChannel.send(ConsumerMetadataRequest(group))
            val response = queryChannel.receive()

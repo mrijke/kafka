@@ -31,6 +31,7 @@ class AuthConfig(var securityConfigFile: String) extends Logging {
   val props = {
     if (securityConfigFile == null) {
       warn("securityConfigFile is null, using default securityConfigFile %s".format(AuthConfig.DEFAULT_SECURITY_CONFIG))
+      trace("Loading security properties from config file " + securityConfigFile);
       securityConfigFile = AuthConfig.DEFAULT_SECURITY_CONFIG
     }
     new VerifiableProperties(Utils.loadProps(securityConfigFile))
