@@ -57,6 +57,7 @@ object GetOffsetShell {
                            .describedAs("ms")
                            .ofType(classOf[java.lang.Integer])
                            .defaultsTo(1000)
+    val secureOpt = parser.accepts("secure", "Whether SSL enabled").withOptionalArg()
     val securityConfigFileOpt = parser.accepts("security.config.file", "Security config file to use for SSL.")
                            .withRequiredArg
                            .describedAs("property file")
@@ -72,13 +73,13 @@ object GetOffsetShell {
     val clientId = "GetOffsetShell"
     val brokerList = options.valueOf(brokerListOpt)
     ToolsUtils.validatePortOrDie(parser, brokerList)
-    val metadataTargetBrokers = ClientUtils.parseBrokerList(brokerList)
+    val secure = options.has(secureOpt) || options.has(securityConfigFileOpt)
+    val metadataTargetBrokers = ClientUtils.parseBrokerList(brokerList, secure)
     val topic = options.valueOf(topicOpt)
     var partitionList = options.valueOf(partitionOpt)
     var time = options.valueOf(timeOpt).longValue
     val nOffsets = options.valueOf(nOffsetsOpt).intValue
     val maxWaitMs = options.valueOf(maxWaitMsOpt).intValue()
-    val secure = options.has(securityConfigFileOpt)
 
     val topicsMetadata = ClientUtils.fetchTopicMetadata(Set(topic), metadataTargetBrokers, clientId, options.valueOf(securityConfigFileOpt), maxWaitMs).topicsMetadata
     if(topicsMetadata.size != 1 || !topicsMetadata(0).topic.equals(topic)) {

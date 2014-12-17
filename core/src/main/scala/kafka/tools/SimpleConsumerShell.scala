@@ -96,6 +96,8 @@ object SimpleConsumerShell extends Logging {
         
     if(args.length == 0)
       CommandLineUtils.printUsageAndDie(parser, "A low-level tool for fetching data directly from a particular replica.")
+
+    val secureOpt = parser.accepts("secure", "Whether SSL enabled").withOptionalArg()
     val securityConfigFileOpt = parser.accepts("security.config.file", "Security config file to use for SSL.")
                            .withRequiredArg
                            .describedAs("property file")
@@ -116,6 +118,7 @@ object SimpleConsumerShell extends Logging {
     val skipMessageOnError = if (options.has(skipMessageOnErrorOpt)) true else false
     val printOffsets = if(options.has(printOffsetOpt)) true else false
     val noWaitAtEndOfLog = options.has(noWaitAtEndOfLogOpt)
+    val secure = options.has(secureOpt) || options.has(securityConfigFileOpt)
     val securityConfigFile = options.valueOf(securityConfigFileOpt)
 
     val messageFormatterClass = Class.forName(options.valueOf(messageFormatterOpt))
@@ -131,7 +134,7 @@ object SimpleConsumerShell extends Logging {
     info("Getting topic metatdata...")
     val brokerList = options.valueOf(brokerListOpt)
     ToolsUtils.validatePortOrDie(parser,brokerList)
-    val metadataTargetBrokers = ClientUtils.parseBrokerList(brokerList)
+    val metadataTargetBrokers = ClientUtils.parseBrokerList(brokerList, secure)
     val topicsMetadata = ClientUtils.fetchTopicMetadata(Set(topic), metadataTargetBrokers, clientId, securityConfigFile, maxWaitMs).topicsMetadata
     if(topicsMetadata.size != 1 || !topicsMetadata(0).topic.equals(topic)) {
       System.err.println(("Error: no valid topic metadata for topic: %s, " + "what we get from server is only: %s").format(topic, topicsMetadata))
@@ -173,7 +176,7 @@ object SimpleConsumerShell extends Logging {
     }
     if (startingOffset < 0) {
       val simpleConsumer = new SimpleConsumer(fetchTargetBroker.host, fetchTargetBroker.port, ConsumerConfig.SocketTimeout,
-                                              ConsumerConfig.SocketBufferSize, clientId)
+                                              ConsumerConfig.SocketBufferSize, clientId, fetchTargetBroker.secure, securityConfigFile)
       try {
         startingOffset = simpleConsumer.earliestOrLatestOffset(TopicAndPartition(topic, partitionId), startingOffset,
                                                                Request.DebuggingConsumerId)
@@ -194,7 +197,7 @@ object SimpleConsumerShell extends Logging {
     val replicaString = if(replicaId > 0) "leader" else "replica"
     info("Starting simple consumer shell to partition [%s, %d], %s [%d], host and port: [%s, %d], from offset [%d]"
                  .format(topic, partitionId, replicaString, replicaId, fetchTargetBroker.host, fetchTargetBroker.port, startingOffset))
-    val simpleConsumer = new SimpleConsumer(fetchTargetBroker.host, fetchTargetBroker.port, 10000, 64*1024, clientId)
+    val simpleConsumer = new SimpleConsumer(fetchTargetBroker.host, fetchTargetBroker.port, 10000, 64*1024, clientId, fetchTargetBroker.secure, securityConfigFile)
     val thread = Utils.newThread("kafka-simpleconsumer-shell", new Runnable() {
       def run() {
         var offset = startingOffset

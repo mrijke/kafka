@@ -92,6 +92,7 @@ object ReplicaVerificationTool extends Logging {
                          .describedAs("ms")
                          .ofType(classOf[java.lang.Long])
                          .defaultsTo(30 * 1000L)
+    val secureOpt = parser.accepts("secure", "Whether SSL enabled").withOptionalArg()
     val securityConfigFileOpt = parser.accepts("security.config.file", "Security config file to use for SSL.")
                          .withRequiredArg
                          .describedAs("property file")
@@ -118,12 +119,13 @@ object ReplicaVerificationTool extends Logging {
     val maxWaitMs = options.valueOf(maxWaitMsOpt).intValue
     val initialOffsetTime = options.valueOf(initialOffsetTimeOpt).longValue
     val reportInterval = options.valueOf(reportIntervalOpt).longValue
+    val secure = options.has(secureOpt) || options.has(securityConfigFileOpt)
     val securityConfigFile = options.valueOf(securityConfigFileOpt)
     // getting topic metadata
     info("Getting topic metatdata...")
     val brokerList = options.valueOf(brokerListOpt)
     ToolsUtils.validatePortOrDie(parser,brokerList)
-    val metadataTargetBrokers = ClientUtils.parseBrokerList(brokerList)
+    val metadataTargetBrokers = ClientUtils.parseBrokerList(brokerList, secure)
     val topicsMetadataResponse = ClientUtils.fetchTopicMetadata(Set[String](), metadataTargetBrokers, clientId, securityConfigFile, maxWaitMs)
     val brokerMap = topicsMetadataResponse.brokers.map(b => (b.id, b)).toMap
     val filteredTopicMetadata = topicsMetadataResponse.topicsMetadata.filter(

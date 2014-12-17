@@ -29,7 +29,7 @@ class BrokerPartitionInfo(producerConfig: ProducerConfig,
                           topicPartitionInfo: HashMap[String, TopicMetadata])
         extends Logging {
   val brokerList = producerConfig.brokerList
-  val brokers = ClientUtils.parseBrokerList(brokerList)
+  val brokers = ClientUtils.parseBrokerList(brokerList, producerConfig.secure)
 
   /**
    * Return a sequence of (brokerId, numPartitions).
