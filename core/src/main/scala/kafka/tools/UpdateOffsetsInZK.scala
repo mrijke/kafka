@@ -74,6 +74,7 @@ object UpdateOffsetsInZK {
           println("updating partition " + partition + " with new offset: " + offset)
           ZkUtils.updatePersistentPath(zkClient, topicDirs.consumerOffsetDir + "/" + partition, offset.toString)
           numParts += 1
+          consumer.close()
         case None => throw new KafkaException("Broker information for broker id %d does not exist in ZK".format(broker))
       }
     }

@@ -105,6 +105,7 @@ object GetOffsetShell {
               val offsets = consumer.getOffsetsBefore(request).partitionErrorAndOffsets(topicAndPartition).offsets
 
               println("%s:%d:%s".format(topic, partitionId, offsets.mkString(",")))
+              consumer.close();
             case None => System.err.println("Error: partition %d does not have a leader. Skip getting offsets".format(partitionId))
           }
         case None => System.err.println("Error: partition %d does not exist".format(partitionId))

@@ -93,15 +93,14 @@ object SimpleConsumerShell extends Logging {
         "skip it instead of halt.")
     val noWaitAtEndOfLogOpt = parser.accepts("no-wait-at-logend",
         "If set, when the simple consumer reaches the end of the Log, it will stop, not waiting for new produced messages")
+    val secureOpt = parser.accepts("secure", "Whether SSL enabled").withOptionalArg()
+    val securityConfigFileOpt = parser.accepts("security.config.file", "Security config file to use for SSL.")
+      .withRequiredArg
+      .describedAs("property file")
+      .ofType(classOf[java.lang.String])
         
     if(args.length == 0)
       CommandLineUtils.printUsageAndDie(parser, "A low-level tool for fetching data directly from a particular replica.")
-
-    val secureOpt = parser.accepts("secure", "Whether SSL enabled").withOptionalArg()
-    val securityConfigFileOpt = parser.accepts("security.config.file", "Security config file to use for SSL.")
-                           .withRequiredArg
-                           .describedAs("property file")
-                           .ofType(classOf[java.lang.String])
 
     val options = parser.parse(args : _*)
     CommandLineUtils.checkRequiredArgs(parser, options, brokerListOpt, topicOpt, partitionIdOpt)
