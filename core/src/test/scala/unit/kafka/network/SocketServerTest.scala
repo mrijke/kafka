@@ -161,6 +161,8 @@ class SocketServerTest extends JUnitSuite {
     val overrideServer: SocketServer = new SocketServer(0,
                                                 host = null,
                                                 port = kafka.utils.TestUtils.choosePort,
+                                                false,
+                                                null,
                                                 numProcessorThreads = 1,
                                                 maxQueuedRequests = 50,
                                                 sendBufferSize = 300000,
